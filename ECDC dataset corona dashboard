@@ -1,0 +1,77 @@
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase 
+from email import encoders 
+from smtplib import SMTP
+import smtplib
+import sys
+import base64
+from base64 import b64encode
+import io
+
+cmap = sns.cubehelix_palette(dark=.3, as_cmap=True)
+plt.figure(figsize=(30, 18))
+plt.style.use('seaborn-darkgrid')
+ax=sns.lineplot(x="Date", y="newcases",
+                        palette='dark',
+                        legend="full",
+                        data=indiadf,  
+                       marker='o', 
+                       color='r',sort=False,sizes=(100,200)
+               )
+
+# Adding annotations to list no of newcases in each data point
+[ax.text(p[0], p[1]+50, p[1], color='B', size=32) for p in zip(ax.get_xticks(), indiadf['newcases'])]
+        
+plt.title("COVID19 dashboard (India) ", fontsize=40); #Corona Pandemic LIVE (India)- Created by SABI
+plt.xlabel("Date",fontsize=32);
+plt.ylabel("No.of cases reported",fontsize=30);
+plt.xticks(size=24,rotation=45)
+xticks = ax.get_xticks()
+plt.yticks(size=19,rotation=0)
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles, labels, loc=1)
+plt.setp(ax.get_legend().get_texts(),fontsize=20)
+
+f=io.BytesIO()
+plt.savefig(f, format='png')
+f.seek(0)
+plt.show()
+
+server = smtplib.SMTP('smtp.gmail.com',587)
+server.ehlo()
+server.starttls()
+server.login('xxxxxxxx@gmail.com','xxxxxxxx')
+
+recipients = ['xxxxxxxxxxxxxxxxxxxxxxx@gmail.com','eeeeeeeeeeee@outlook.com'] 
+emaillist = [elem.strip().split(',') for elem in recipients]
+msg = MIMEMultipart()
+msg['Subject'] = "Covid"
+msg['From'] = 'xxxxxxxx@gmail.com'
+
+part = MIMEBase('image', "png")
+part.set_payload(f.read() )
+encoders.encode_base64(part)
+
+html = """\
+<html>
+  <head><title>Daily cases</title></head>
+  <link rel="stylesheet" type="text/css" href="df_style.css"/>
+  <style> 
+  table, th, td {{font-size:10pt; border:2px solid #ccc; border-collapse:collapse; text-align:center;}}
+  th, td {{padding: 5px;}}
+
+  </style>
+  <body>
+    {0}
+    
+  </body>
+</html>
+""".format(indiadf[["newcases","deaths","Date"]].tail(30).to_html(index=False))
+
+part1 = MIMEText(html, 'html')
+msg.attach(part1)
+msg.attach(part)
+server.sendmail(msg['From'], emaillist, msg.as_string())
+server.quit()
